@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>匿名聊天 | Anonymous Chat</title>
+    <title>猫咪聊天 | Cat Talk (CDN版本)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -61,9 +61,12 @@
             margin-bottom: 10px;
         }
     </style>
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
-    <h1>匿名聊天 | Anonymous Chat</h1>
+    <h1>猫咪聊天 | Cat Talk (CDN版本)</h1>
     <div class="status">您的匿名ID: <span id="user-id"></span></div>
     <div id="chat"></div>
     <div class="input-area">
@@ -71,13 +74,8 @@
         <button onclick="sendMessage()">发送</button>
     </div>
 
-    <!-- Firebase SDK (模块化版本) -->
-    <script type="module">
-        // 导入Firebase SDK
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, push, set, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-
-        // 初始化Firebase (需要替换为您的Firebase配置)
+    <script>
+        // 初始化Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyDkygULk8HZXnGpICuCVcyAztaz80efePk",
             authDomain: "cattalk-ade50.firebaseapp.com",
@@ -90,9 +88,9 @@
         };
 
         // 初始化Firebase应用
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const messagesRef = ref(db, 'messages');
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const messagesRef = db.ref('messages');
 
         // 生成匿名用户ID
         let userId = localStorage.getItem('firebase-chat-userId');
@@ -105,27 +103,26 @@
         document.getElementById('user-id').textContent = userId.substring(0, 4);
 
         // 实时监听新消息
-        const recentMessagesQuery = query(messagesRef, limitToLast(50));
-        onChildAdded(recentMessagesQuery, (snapshot) => {
+        messagesRef.limitToLast(50).on('child_added', (snapshot) => {
             const msg = snapshot.val();
             addMessageToChat(msg, snapshot.key);
         });
 
-        // 全局函数：发送消息
-        window.sendMessage = function() {
+        // 发送消息
+        function sendMessage() {
             const input = document.getElementById('input');
             const text = input.value.trim();
             
             if (text) {
-                const newMessageRef = push(messagesRef);
-                set(newMessageRef, {
+                const newMessageRef = messagesRef.push();
+                newMessageRef.set({
                     text: text,
                     userId: userId,
                     timestamp: Date.now()
                 });
                 input.value = '';
             }
-        };
+        }
 
         // 渲染消息
         function addMessageToChat(msg, key) {

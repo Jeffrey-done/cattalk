@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "messages": {
+      ".read": true,
+      ".write": true,
+      "$message": {
+        ".validate": "newData.hasChildren(['userId', 'text', 'timestamp']) && newData.child('text').isString() && newData.child('text').val().length <= 500 && newData.child('userId').isString() && newData.child('timestamp').isNumber()"
+      }
+    },
+    "online": {
+      ".read": true,
+      "$uid": {
+        ".write": "$uid === auth.uid || !auth.uid",
+        ".validate": "newData.hasChildren(['online', 'lastSeen']) && newData.child('online').isBoolean() && (!newData.child('nickname').exists() || newData.child('nickname').isString() && newData.child('nickname').val().length <= 20)"
+      }
+    },
+    "typing": {
+      ".read": true,
+      "$uid": {
+        ".write": "$uid === auth.uid || !auth.uid"
+      }
+    }
+  }
+} 

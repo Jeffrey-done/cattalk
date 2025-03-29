@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猫咪聊天 | Cat Talk</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7f9fc;
+            color: #333;
+            text-align: center;
+        }
+        h1 {
+            color: #4285f4;
+            margin-bottom: 30px;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 50px;
+            flex-wrap: wrap;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 30px;
+            width: 300px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        h2 {
+            color: #4285f4;
+            margin-top: 0;
+        }
+        p {
+            color: #666;
+            line-height: 1.5;
+        }
+        .features {
+            text-align: left;
+            margin: 20px 0;
+        }
+        .features li {
+            margin-bottom: 8px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #4285f4;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 24px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #3367d6;
+        }
+        .footer {
+            margin-top: 50px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐱 猫咪聊天 | Cat Talk</h1>
+    <p>一个基于Firebase的匿名聊天应用，无需注册即可使用</p>
+
+    <div class="container">
+        <div class="card">
+            <div class="icon">💬</div>
+            <h2>基础版</h2>
+            <p>简洁轻量的聊天体验，包含核心功能</p>
+            <div class="features">
+                <ul>
+                    <li>匿名用户ID</li>
+                    <li>实时消息推送</li>
+                    <li>消息历史记录</li>
+                    <li>简洁界面</li>
+                </ul>
+            </div>
+            <a href="index.html" class="btn">开始聊天</a>
+        </div>
+
+        <div class="card">
+            <div class="icon">✨</div>
+            <h2>高级版</h2>
+            <p>功能完善的聊天体验，更多高级特性</p>
+            <div class="features">
+                <ul>
+                    <li>用户昵称系统</li>
+                    <li>在线状态显示</li>
+                    <li>输入状态提示</li>
+                    <li>历史消息分页</li>
+                    <li>自动清理旧消息</li>
+                </ul>
+            </div>
+            <a href="advanced.html" class="btn">体验高级版</a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>基于Firebase实时数据库构建 | © 2023 Cat Talk</p>
+    </div>
+</body>
+</html> 

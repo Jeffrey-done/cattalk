@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级匿名聊天 | Advanced Anonymous Chat</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #4285f4;
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        #chat {
+            height: 450px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px 14px;
+            background: #f1f3f4;
+            border-radius: 18px;
+            max-width: 80%;
+            word-break: break-word;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            clear: both;
+            float: left;
+        }
+        .message.own {
+            background: #e3f2fd;
+            float: right;
+            text-align: right;
+        }
+        .message-header {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .message-content {
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+        #input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 24px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #input:focus {
+            border-color: #4285f4;
+        }
+        button {
+            padding: 0 20px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+        .typing-indicator {
+            font-style: italic;
+            height: 1.2em;
+        }
+        .online-users {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .user-avatar {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        #nickname-form {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        #nickname {
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #666;
+        }
+        #load-more {
+            display: block;
+            margin: 10px auto;
+            padding: 6px 12px;
+            background-color: #f1f3f4;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        #load-more:hover {
+            background-color: #e0e0e0;
+        }
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            #chat {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>高级匿名聊天</h1>
+        <div class="online-users">
+            <div class="user-avatar"></div>
+            <span id="online-count">0</span> 在线用户
+        </div>
+    </header>
+
+    <div id="nickname-form">
+        <input type="text" id="nickname" placeholder="设置你的昵称（可选）" maxlength="20">
+        <button onclick="setNickname()">保存</button>
+    </div>
+
+    <div class="status-bar">
+        <div>您的ID: <span id="user-id"></span></div>
+        <div class="typing-indicator" id="typing-indicator"></div>
+    </div>
+
+    <div id="chat">
+        <div class="loading" id="loading">加载中...</div>
+        <button id="load-more" style="display:none">加载更多消息</button>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="input" placeholder="输入消息..." onkeypress="if(event.key === 'Enter') sendMessage()">
+        <button onclick="sendMessage()">发送</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // 导入Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { 
+            getDatabase, 
+            ref, 
+            push, 
+            set, 
+            onChildAdded, 
+            onValue, 
+            query, 
+            limitToLast, 
+            orderByKey, 
+            endBefore,
+            orderByChild,
+            startAt,
+            onDisconnect,
+            serverTimestamp,
+            remove,
+            get
+        } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // 初始化Firebase (需要替换为您的Firebase配置)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkygULk8HZXnGpICuCVcyAztaz80efePk",
+            authDomain: "cattalk-ade50.firebaseapp.com",
+            databaseURL: "https://cattalk-ade50-default-rtdb.firebaseio.com",
+            projectId: "cattalk-ade50",
+            storageBucket: "cattalk-ade50.firebasestorage.app",
+            messagingSenderId: "210485142610",
+            appId: "1:210485142610:web:de99542e92e93cde236b8b",
+            measurementId: "G-8GL4789D12"
+        };
+
+        // 初始化Firebase应用
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+        const onlineRef = ref(db, 'online');
+        const typingRef = ref(db, 'typing');
+
+        // 生成匿名用户ID
+        let userId = localStorage.getItem('firebase-chat-userId');
+        if (!userId) {
+            userId = Math.random().toString(36).substring(2, 8);
+            localStorage.setItem('firebase-chat-userId', userId);
+        }
+
+        // 获取或设置昵称
+        let nickname = localStorage.getItem('firebase-chat-nickname') || `用户${userId.substring(0, 4)}`;
+        document.getElementById('nickname').value = nickname !== `用户${userId.substring(0, 4)}` ? nickname : '';
+        
+        // 显示用户ID
+        document.getElementById('user-id').textContent = userId.substring(0, 4);
+
+        // 在线状态管理
+        const userStatusRef = ref(db, `online/${userId}`);
+        set(userStatusRef, {
+            online: true,
+            lastSeen: serverTimestamp(),
+            nickname: nickname
+        });
+        
+        // 用户断开连接时自动更新状态
+        onDisconnect(userStatusRef).update({
+            online: false,
+            lastSeen: serverTimestamp()
+        });
+
+        // 监听在线用户数量
+        onValue(onlineRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            const onlineUsers = Object.values(data).filter(user => user.online);
+            document.getElementById('online-count').textContent = onlineUsers.length;
+        });
+
+        // 全局变量
+        let oldestMessageKey = null;
+        let isFirstLoad = true;
+        let isLoadingMore = false;
+        const chatDiv = document.getElementById('chat');
+        const loadingDiv = document.getElementById('loading');
+        const loadMoreBtn = document.getElementById('load-more');
+
+        // 实时监听新消息
+        const recentMessagesQuery = query(messagesRef, limitToLast(20));
+        onChildAdded(recentMessagesQuery, (snapshot) => {
+            const msg = snapshot.val();
+            const key = snapshot.key;
+            
+            if (isFirstLoad) {
+                if (!oldestMessageKey) {
+                    oldestMessageKey = key;
+                }
+                loadingDiv.style.display = 'none';
+                isFirstLoad = false;
+            }
+            
+            addMessageToChat(msg, key);
+            window.setTimeout(() => chatDiv.scrollTop = chatDiv.scrollHeight, 100);
+        });
+
+        // 监听输入状态
+        onValue(typingRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            const typingUsers = Object.entries(data)
+                .filter(([id, status]) => status && id !== userId)
+                .map(([id]) => {
+                    // 尝试获取昵称
+                    const userRef = ref(db, `online/${id}`);
+                    return get(userRef).then(userSnap => {
+                        const userData = userSnap.val() || {};
+                        return userData.nickname || `用户${id.substring(0, 4)}`;
+                    }).catch(() => `用户${id.substring(0, 4)}`);
+                });
+            
+            Promise.all(typingUsers).then(names => {
+                const indicator = document.getElementById('typing-indicator');
+                if (names.length === 0) {
+                    indicator.textContent = '';
+                } else if (names.length === 1) {
+                    indicator.textContent = `${names[0]} 正在输入...`;
+                } else if (names.length === 2) {
+                    indicator.textContent = `${names[0]} 和 ${names[1]} 正在输入...`;
+                } else {
+                    indicator.textContent = `${names.length} 人正在输入...`;
+                }
+            });
+        });
+
+        // 加载更多历史消息
+        loadMoreBtn.addEventListener('click', loadMoreMessages);
+
+        function loadMoreMessages() {
+            if (isLoadingMore || !oldestMessageKey) return;
+            
+            isLoadingMore = true;
+            loadMoreBtn.textContent = '加载中...';
+            
+            const olderMessagesQuery = query(
+                messagesRef, 
+                orderByKey(), 
+                endBefore(oldestMessageKey), 
+                limitToLast(10)
+            );
+            
+            get(olderMessagesQuery).then((snapshot) => {
+                if (!snapshot.exists()) {
+                    loadMoreBtn.textContent = '没有更多消息';
+                    loadMoreBtn.disabled = true;
+                    return;
+                }
+                
+                const messages = [];
+                snapshot.forEach((childSnapshot) => {
+                    messages.push({
+                        key: childSnapshot.key,
+                        data: childSnapshot.val()
+                    });
+                });
+                
+                // 更新最旧消息的键
+                if (messages.length > 0) {
+                    oldestMessageKey = messages[0].key;
+                    
+                    // 按时间顺序添加消息（从旧到新）
+                    messages.forEach(msg => {
+                        prependMessage(msg.data, msg.key);
+                    });
+                    
+                    loadMoreBtn.textContent = '加载更多消息';
+                } else {
+                    loadMoreBtn.textContent = '没有更多消息';
+                    loadMoreBtn.disabled = true;
+                }
+                
+                isLoadingMore = false;
+            }).catch(error => {
+                console.error("加载更多消息时出错:", error);
+                loadMoreBtn.textContent = '加载失败，请重试';
+                isLoadingMore = false;
+            });
+        }
+
+        // 监听输入框事件，更新输入状态
+        const inputField = document.getElementById('input');
+        let typingTimeout = null;
+        
+        inputField.addEventListener('input', () => {
+            const userTypingRef = ref(db, `typing/${userId}`);
+            set(userTypingRef, true);
+            
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                set(userTypingRef, false);
+            }, 3000);
+        });
+
+        // 设置昵称
+        window.setNickname = function() {
+            const input = document.getElementById('nickname');
+            const newNickname = input.value.trim();
+            
+            if (newNickname) {
+                nickname = newNickname;
+                localStorage.setItem('firebase-chat-nickname', nickname);
+                
+                // 更新在线状态中的昵称
+                set(ref(db, `online/${userId}/nickname`), nickname);
+                
+                alert('昵称已成功设置!');
+            } else {
+                nickname = `用户${userId.substring(0, 4)}`;
+                localStorage.removeItem('firebase-chat-nickname');
+                
+                // 更新在线状态中的昵称
+                set(ref(db, `online/${userId}/nickname`), nickname);
+                
+                input.value = '';
+                alert('已重置为默认昵称');
+            }
+        };
+
+        // 发送消息
+        window.sendMessage = function() {
+            const input = document.getElementById('input');
+            const text = input.value.trim();
+            
+            if (text) {
+                const newMessageRef = push(messagesRef);
+                set(newMessageRef, {
+                    text: text,
+                    userId: userId,
+                    nickname: nickname,
+                    timestamp: Date.now()
+                });
+                
+                input.value = '';
+                
+                // 清除输入状态
+                const userTypingRef = ref(db, `typing/${userId}`);
+                set(userTypingRef, false);
+                clearTimeout(typingTimeout);
+            }
+        };
+
+        // 自动清理旧消息 (每3小时运行一次)
+        function setupMessageCleanup() {
+            const keepLast100 = async () => {
+                try {
+                    const messagesSnapshot = await get(query(messagesRef, limitToLast(101)));
+                    if (!messagesSnapshot.exists()) return;
+                    
+                    const messages = [];
+                    messagesSnapshot.forEach(child => {
+                        messages.push({
+                            key: child.key,
+                            data: child.val()
+                        });
+                    });
+                    
+                    if (messages.length > 100) {
+                        // 按时间排序 (从旧到新)
+                        messages.sort((a, b) => a.data.timestamp - b.data.timestamp);
+                        
+                        // 删除最旧的消息
+                        const oldestMessage = messages[0];
+                        await remove(ref(db, `messages/${oldestMessage.key}`));
+                        console.log("已清理旧消息", oldestMessage.key);
+                    }
+                } catch (error) {
+                    console.error("清理消息时出错:", error);
+                }
+            };
+            
+            // 每3小时运行一次
+            setInterval(keepLast100, 3 * 60 * 60 * 1000);
+            
+            // 立即运行一次
+            keepLast100();
+        }
+        
+        // 在页面加载时设置消息清理
+        setupMessageCleanup();
+
+        // 渲染消息
+        function addMessageToChat(msg, key) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message clearfix';
+            if (msg.userId === userId) {
+                msgDiv.className += ' own';
+            }
+            
+            msgDiv.dataset.key = key;
+            
+            // 获取用户昵称（优先使用消息中保存的昵称）
+            const displayName = msg.nickname || `用户${msg.userId.substring(0, 4)}`;
+            
+            msgDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${displayName}</span>
+                    <span>[${new Date(msg.timestamp).toLocaleTimeString()}]</span>
+                </div>
+                <div class="message-content">${escapeHtml(msg.text)}</div>
+            `;
+            
+            // 如果是旧消息，则添加到顶部
+            const loadMoreBtn = document.getElementById('load-more');
+            if (loadMoreBtn.nextSibling) {
+                chatDiv.insertBefore(msgDiv, loadMoreBtn.nextSibling);
+            } else {
+                chatDiv.appendChild(msgDiv);
+            }
+            
+            // 显示加载更多按钮
+            loadMoreBtn.style.display = 'block';
+        }
+
+        // 预加载消息 (添加到顶部)
+        function prependMessage(msg, key) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message clearfix';
+            if (msg.userId === userId) {
+                msgDiv.className += ' own';
+            }
+            
+            msgDiv.dataset.key = key;
+            
+            // 获取用户昵称
+            const displayName = msg.nickname || `用户${msg.userId.substring(0, 4)}`;
+            
+            msgDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${displayName}</span>
+                    <span>[${new Date(msg.timestamp).toLocaleTimeString()}]</span>
+                </div>
+                <div class="message-content">${escapeHtml(msg.text)}</div>
+            `;
+            
+            // 添加到加载更多按钮之后
+            chatDiv.insertBefore(msgDiv, loadMoreBtn.nextSibling);
+        }
+
+        // 转义HTML以防XSS攻击
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html> 

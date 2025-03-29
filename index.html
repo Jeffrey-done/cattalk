@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>匿名聊天 | Anonymous Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        #chat {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .message {
+            margin: 8px 0;
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            word-break: break-word;
+        }
+        .message.own {
+            background: #e3f2fd;
+            text-align: right;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #input {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        h1 {
+            color: #4285f4;
+        }
+        .status {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>匿名聊天 | Anonymous Chat</h1>
+    <div class="status">您的匿名ID: <span id="user-id"></span></div>
+    <div id="chat"></div>
+    <div class="input-area">
+        <input type="text" id="input" placeholder="输入消息..." onkeypress="if(event.key === 'Enter') sendMessage()">
+        <button onclick="sendMessage()">发送</button>
+    </div>
+
+    <!-- Firebase SDK (模块化版本) -->
+    <script type="module">
+        // 导入Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, push, set, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // 初始化Firebase (需要替换为您的Firebase配置)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkygULk8HZXnGpICuCVcyAztaz80efePk",
+            authDomain: "cattalk-ade50.firebaseapp.com",
+            databaseURL: "https://cattalk-ade50-default-rtdb.firebaseio.com",
+            projectId: "cattalk-ade50",
+            storageBucket: "cattalk-ade50.firebasestorage.app",
+            messagingSenderId: "210485142610",
+            appId: "1:210485142610:web:de99542e92e93cde236b8b",
+            measurementId: "G-8GL4789D12"
+        };
+
+        // 初始化Firebase应用
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+
+        // 生成匿名用户ID
+        let userId = localStorage.getItem('firebase-chat-userId');
+        if (!userId) {
+            userId = Math.random().toString(36).substring(2, 8);
+            localStorage.setItem('firebase-chat-userId', userId);
+        }
+        
+        // 显示用户ID
+        document.getElementById('user-id').textContent = userId.substring(0, 4);
+
+        // 实时监听新消息
+        const recentMessagesQuery = query(messagesRef, limitToLast(50));
+        onChildAdded(recentMessagesQuery, (snapshot) => {
+            const msg = snapshot.val();
+            addMessageToChat(msg, snapshot.key);
+        });
+
+        // 全局函数：发送消息
+        window.sendMessage = function() {
+            const input = document.getElementById('input');
+            const text = input.value.trim();
+            
+            if (text) {
+                const newMessageRef = push(messagesRef);
+                set(newMessageRef, {
+                    text: text,
+                    userId: userId,
+                    timestamp: Date.now()
+                });
+                input.value = '';
+            }
+        };
+
+        // 渲染消息
+        function addMessageToChat(msg, key) {
+            const chatDiv = document.getElementById('chat');
+            const msgDiv = document.createElement('div');
+            
+            msgDiv.className = 'message';
+            if (msg.userId === userId) {
+                msgDiv.className += ' own';
+            }
+            
+            msgDiv.dataset.key = key;
+            
+            msgDiv.innerHTML = `
+                <small>[${new Date(msg.timestamp).toLocaleTimeString()}]</small>
+                <b>用户${msg.userId.substring(0, 4)}</b>: ${escapeHtml(msg.text)}
+            `;
+            
+            chatDiv.appendChild(msgDiv);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
+        // 转义HTML以防XSS攻击
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html> 
